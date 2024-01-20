@@ -17,6 +17,7 @@
 package primitives
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -392,6 +393,17 @@ func extractFormFontDetails(
 	return fontID, fName, fLang, fontIndRef, err
 }
 
+func unescapeNumericCodes(input string) string {
+	re := regexp.MustCompile(`\\(\d{3})`)
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		code, err := strconv.Atoi(match[1:])
+		if err != nil {
+			return match
+		}
+		return string(rune(code))
+	})
+}
+
 func fontFromDA(s string) (string, FormFont, error) {
 
 	da := strings.Fields(s)
@@ -405,7 +417,9 @@ func fontFromDA(s string) (string, FormFont, error) {
 
 	for i := 0; i < len(da); i++ {
 		if da[i] == "Tf" {
-			fontID = da[i-2][1:]
+			// replace ASCII escaped fontID. e.g. `\057F2F1` to `/F2F1`
+			rawFontID := unescapeNumericCodes(da[i-2])
+			fontID = rawFontID[1:]
 			//tf.SetFontID(fontID)
 			fl, err := strconv.ParseFloat(da[i-1], 64)
 			if err != nil {
